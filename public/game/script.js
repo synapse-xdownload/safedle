@@ -981,101 +981,48 @@ class R34HigherLowerGame {
   }
 
   updateCharacterImage(characterCard, imageUrl) {
-    // Remove any existing character image container
-    const existingImageContainer = characterCard.querySelector(
-      ".character-image-container"
-    );
-    if (existingImageContainer) {
-      existingImageContainer.remove();
-    }
+    // Purana image container hataao
+    const existingImageContainer = characterCard.querySelector(".character-image-container");
+    if (existingImageContainer) existingImageContainer.remove();
 
-    // Only add image if URL exists and is not null
-    if (imageUrl && imageUrl.trim() !== "") {
-      const imageContainer = document.createElement("div");
-      imageContainer.className = "character-image-container";
+    if (!imageUrl || imageUrl.trim() === "") return;
 
-      const image = document.createElement("img");
-      image.className = "character-image";
-      // Reduce hotlink/referrer issues
-      try {
-        image.referrerPolicy = "no-referrer";
-      } catch (_) {}
+    const imageContainer = document.createElement("div");
+    imageContainer.className = "character-image-container";
 
-      const tryLoadImage = (imageUrl, image) => {
-        return new Promise((resolve, reject) => {
-          // Check if we have a cached successful strategy for this image
-          const cachedStrategy = window.gameCache.getImageStrategy(imageUrl);
+    const image = document.createElement("img");
+    image.className = "character-image";
 
-          const corsProxies = [
-            "https://corsproxy.io/?",
-            "https://cors-anywhere.herokuapp.com/",
-            "https://api.allorigins.win/raw?url=",
-          ];
+    // Apna Vercel proxy use karo - CORS/hotlink problems solve ho jaayenge
+    const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(imageUrl)}`;
 
-          let methodIndex = cachedStrategy !== null ? cachedStrategy : 0;
-          const totalMethods = corsProxies.length + 1;
-
-          // Increase timeout on mobile devices
-          const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(
-            navigator.userAgent
-          );
-          const timeout = isMobile ? 5000 : 3000;
-
-          const tryNextOption = () => {
-            if (methodIndex >= totalMethods) {
-              console.warn("All image loading options failed for:", imageUrl);
-              reject(new Error("All image loading options failed"));
-              return;
-            }
-
-            let currentUrl;
-            if (methodIndex === 0) {
-              currentUrl = imageUrl;
-              console.log("Attempting direct load:", currentUrl);
-            } else {
-              const proxy = corsProxies[methodIndex - 1];
-              currentUrl = proxy.includes("?url=")
-                ? `${proxy}${encodeURIComponent(imageUrl)}`
-                : `${proxy}${imageUrl}`;
-              console.log(`Attempting proxy ${methodIndex} load:`, currentUrl);
-            }
-
-            // Directly attempt to load the image without HEAD preflight
-            this.loadImageDirectly(
-              image,
-              currentUrl,
-              methodIndex,
-              imageUrl,
-              resolve,
-              reject,
-              tryNextOption,
-              timeout
-            );
-          };
-
-          tryNextOption();
-        });
-      };
-
-      // Use optimized image loading strategy
-      tryLoadImage(imageUrl, image).catch(() => {
-        console.warn("Image failed to load with all methods:", imageUrl);
-        if (imageContainer.parentNode) {
-          imageContainer.remove();
-        }
-      });
-
-      imageContainer.appendChild(image);
-
-      // Insert the image container after the character name but before the post count
-      const characterName = characterCard.querySelector("h2");
-      const postCount = characterCard.querySelector(".post-count");
-
-      if (characterName && postCount) {
-        characterCard.insertBefore(imageContainer, postCount);
+    image.onload = () => {
+      if (image.naturalWidth > 1 && image.naturalHeight > 1) {
+        image.classList.add("loaded");
       } else {
-        characterCard.appendChild(imageContainer);
+        imageContainer.remove();
       }
+    };
+
+    image.onerror = () => {
+      // Proxy fail hua toh direct try karo
+      if (image.src !== imageUrl) {
+        image.src = imageUrl;
+      } else {
+        imageContainer.remove();
+      }
+    };
+
+    image.src = proxyUrl;
+    imageContainer.appendChild(image);
+
+    const characterName = characterCard.querySelector("h2");
+    const postCount = characterCard.querySelector(".post-count");
+
+    if (characterName && postCount) {
+      characterCard.insertBefore(imageContainer, postCount);
+    } else {
+      characterCard.appendChild(imageContainer);
     }
   }
 
