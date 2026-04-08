@@ -5,8 +5,16 @@
       "destination": "/api/$1"
     },
     {
+      "source": "/game/(.*)",
+      "destination": "/public/game/$1"
+    },
+    {
+      "source": "/",
+      "destination": "/public/game/index.html"
+    },
+    {
       "source": "/(.*)",
-      "destination": "/public/$1"
+      "destination": "/public/game/$1"
     }
   ]
 }
